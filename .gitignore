@@ -1,0 +1,9 @@
+# Result files
+*.out
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints
+
+# VSCode
+.vscode/
+.vs/
