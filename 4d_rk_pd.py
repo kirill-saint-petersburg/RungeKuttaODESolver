@@ -219,5 +219,3 @@ ode(y, y0, t0, t, dt, minimum_dt, mesh_size, tolerance,
 
 with open("result%s.out" % strftime("%d_%m_%Y_%H_%M_%S", localtime()), 'a+') as f_handle:
     numpy.savetxt(f_handle, y.get())
-
-# jupyter notebook --notebook-dir=E:\Temp\PyOpenCL\pdrk
