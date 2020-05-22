@@ -24,9 +24,14 @@ device = platform.get_devices()
 context = cl.Context(device)  # Initialize the Context
 queue = cl.CommandQueue(context)  # Instantiate a Queue
 
+# Create an elementwise kernel object
+#  - Arguments: a string formatted as a C argument list
+#  - Operation: a snippet of C that carries out the desired map operatino
+#  - Name: the fuction name as which the kernel is compiled
+
 ode = cl.elementwise.ElementwiseKernel(
     context,
-    'double4 *y, double4 *y0, double t0, double t, double dt, double minimum_dt, int mesh_size, double tolerance, int *pd_result',
+    'double t0, double t, double dt, double minimum_dt, int mesh_size, double tolerance, double4 *y0, double4 *y, int *pd_result',
 
     '''
     const double two_thirds = 2.0 / 3.0;
@@ -189,40 +194,29 @@ ode = cl.elementwise.ElementwiseKernel(
 
     'ode')
 
-# Create an elementwise kernel object
-#  - Arguments: a string formatted as a C argument list
-#  - Operation: a snippet of C that carries out the desired map operatino
-#  - Name: the fuction name as which the kernel is compiled
 
-task_size = 1024 * 16
+def make_initializing_parameters():
+    task_size = 1024 * 16
+    x0 = -2048
+    v_x0 = 1.0
+    return numpy.array(
+        [cltypes.make_double4(
+            x0,
+            0.05 + (x / task_size) * 4.05,
+            v_x0,
+            0.0
+        ) for x in range(task_size)], dtype=cltypes.double4)
 
-x0 = -2048
-v_x0 = 1.0
-t_x0 = - x0 / v_x0
 
-t0 = numpy.double(0.0)
-t = numpy.double(2 * t_x0)
-dt = 1.0e-1 * (t - t0)
-minimum_dt = 0.001 * dt
+initializing_parameters = make_initializing_parameters()
 
-y0 = cl_array.to_device(queue, numpy.array(
-    [cltypes.make_double4(
-        x0,
-        0.05 + (x / task_size) * 4.05,
-        v_x0,
-        0.0
-    ) for x in range(task_size)], dtype=cltypes.double4))
-
-tolerance = numpy.double(1.0e-14)
-pd_result = cl_array.to_device(
-    queue, numpy.zeros(task_size, dtype=numpy.int32))
-
+y0 = cl_array.to_device(queue, initializing_parameters)
 y = cl_array.empty_like(y0)  # Create an empty pyopencl destination array
+pd_result = cl_array.to_device(queue, numpy.zeros(
+    initializing_parameters.size, dtype=numpy.int32))
 
-mesh_size = 32
-
-ode(y, y0, t0, t, dt, minimum_dt, mesh_size, tolerance,
-    pd_result)  # Call the elementwise kernel
+# Call the elementwise kernel
+ode(0.0, 4096.0, 409.6, 0.4096, 32, 1.0e-14, y0, y, pd_result)
 
 with open("result_%s.out" % strftime("%d_%m_%Y_%H_%M_%S", localtime()), 'a+') as f_handle:
     numpy.savetxt(f_handle, y.get())
