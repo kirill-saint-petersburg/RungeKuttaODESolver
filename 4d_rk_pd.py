@@ -35,7 +35,14 @@ ode = cl.elementwise.ElementwiseKernel(
     const double one_twofivetwozero = 1.0 / 2520.0;
     const double one_fiveninefourzero = 1.0 / 5940.0;
 
-    # define derivedFn(k, Y, _t) do {double r = length(Y.xy); k.xy = Y.zw; k.zw = Y.xy / (r * r * r);} while (0)
+    # define derivedFn(k, Y, _t) \
+    do \
+    { \
+        double r = length(Y.xy); \
+    \
+        k.xy = Y.zw; k.zw = Y.xy / (r * r * r); \
+    } \
+    while (0)
 
     # define RungeKutta(y_next_time, y_current_time, current_time, time_delta, error_runge_kutta) \
     do \
@@ -187,22 +194,16 @@ ode = cl.elementwise.ElementwiseKernel(
 #  - Operation: a snippet of C that carries out the desired map operatino
 #  - Name: the fuction name as which the kernel is compiled
 
-task_size = 1024 * 512
-
-tolerance = numpy.double(1.0e-14)
-pd_result = cl_array.to_device(
-    queue, numpy.zeros(task_size, dtype=numpy.int32))
+task_size = 1024 * 16
 
 x0 = -2048
 v_x0 = 1.0
 t_x0 = - x0 / v_x0
 
 t0 = numpy.double(0.0)
-t = numpy.double(2 * t_x0)  # 16384
+t = numpy.double(2 * t_x0)
 dt = 1.0e-1 * (t - t0)
 minimum_dt = 0.001 * dt
-
-mesh_size = 32  # 32768
 
 y0 = cl_array.to_device(queue, numpy.array(
     [cltypes.make_double4(
@@ -212,10 +213,16 @@ y0 = cl_array.to_device(queue, numpy.array(
         0.0
     ) for x in range(task_size)], dtype=cltypes.double4))
 
+tolerance = numpy.double(1.0e-14)
+pd_result = cl_array.to_device(
+    queue, numpy.zeros(task_size, dtype=numpy.int32))
+
 y = cl_array.empty_like(y0)  # Create an empty pyopencl destination array
+
+mesh_size = 32
 
 ode(y, y0, t0, t, dt, minimum_dt, mesh_size, tolerance,
     pd_result)  # Call the elementwise kernel
 
-with open("result%s.out" % strftime("%d_%m_%Y_%H_%M_%S", localtime()), 'a+') as f_handle:
+with open("result_%s.out" % strftime("%d_%m_%Y_%H_%M_%S", localtime()), 'a+') as f_handle:
     numpy.savetxt(f_handle, y.get())
