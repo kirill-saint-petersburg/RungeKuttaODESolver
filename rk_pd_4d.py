@@ -208,15 +208,16 @@ def make_initializing_parameters():
         ) for x in range(task_size)], dtype=cltypes.double4)
 
 
-initializing_parameters = make_initializing_parameters()
+if __name__ == '__main__':
+    initializing_parameters = make_initializing_parameters()
 
-y0 = cl_array.to_device(queue, initializing_parameters)
-y = cl_array.empty_like(y0)  # Create an empty pyopencl destination array
-pd_result = cl_array.to_device(queue, numpy.zeros(
-    initializing_parameters.size, dtype=numpy.int32))
+    y0 = cl_array.to_device(queue, initializing_parameters)
+    y = cl_array.empty_like(y0)  # Create an empty pyopencl destination array
+    pd_result = cl_array.to_device(queue, numpy.zeros(
+        initializing_parameters.size, dtype=numpy.int32))
 
-# Call the elementwise kernel
-ode(0.0, 4096.0, 409.6, 0.4096, 32, 1.0e-14, y0, y, pd_result)
+    # Call the elementwise kernel
+    ode(0.0, 4096.0, 409.6, 0.4096, 32, 1.0e-14, y0, y, pd_result)
 
-with open("result_%s.out" % strftime("%d_%m_%Y_%H_%M_%S", localtime()), 'a+') as f_handle:
-    numpy.savetxt(f_handle, y.get())
+    with open("result_%s.out" % strftime("%d_%m_%Y_%H_%M_%S", localtime()), 'a+') as f_handle:
+        numpy.savetxt(f_handle, y.get())

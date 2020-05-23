@@ -4,6 +4,10 @@
 # Jupyter notebook checkpoints
 .ipynb_checkpoints
 
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+
 # VSCode
 .vscode/
 .vs/
