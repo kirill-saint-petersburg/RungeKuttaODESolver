@@ -8,16 +8,8 @@ import numpy  # Import Numpy number tools
 
 from time import strftime, localtime
 
-platform = cl.get_platforms()[1]
-
-print('=' * 60)
-print('Platform - Name:     ' + platform.name)
-print('Platform - Vendor:   ' + platform.vendor)
-print('Platform - Version:  ' + platform.version)
-print('Platform - Profile:  ' + platform.profile)
-print('=' * 60)
-
-print('\n')
+platform = next(platform for platform in cl.get_platforms()
+                if platform.name == 'AMD Accelerated Parallel Processing')
 
 device = platform.get_devices()
 
@@ -29,17 +21,9 @@ queue = cl.CommandQueue(context)  # Instantiate a Queue
 #  - Operation: a snippet of C that carries out the desired map operatino
 #  - Name: the fuction name as which the kernel is compiled
 
-ode = cl.elementwise.ElementwiseKernel(
-    context,
-    'double t0, double t, double dt, double minimum_dt, int mesh_size, double tolerance, double4 *y0, double4 *y, int *pd_result',
+ode_arguments = 'double t0, double t, double dt, double minimum_dt, int mesh_size, double tolerance, double4 *y0, double4 *y, int *pd_result'
 
-    '''
-    const double two_thirds = 2.0 / 3.0;
-    const double one_seventwoninths = 1.0 / 729.0;
-    const double one_twoninesevenzero = 1.0 / 2970.0;
-    const double one_twofivetwozero = 1.0 / 2520.0;
-    const double one_fiveninefourzero = 1.0 / 5940.0;
-
+derivedFn = '''
     # define derivedFn(k, Y, _t) \
     do \
     { \
@@ -48,6 +32,15 @@ ode = cl.elementwise.ElementwiseKernel(
         k.xy = Y.zw; k.zw = Y.xy / (r * r * r); \
     } \
     while (0)
+
+'''
+
+rungeKutta = '''
+    const double two_thirds = 2.0 / 3.0;
+    const double one_seventwoninths = 1.0 / 729.0;
+    const double one_twoninesevenzero = 1.0 / 2970.0;
+    const double one_twofivetwozero = 1.0 / 2520.0;
+    const double one_fiveninefourzero = 1.0 / 5940.0;
 
     # define RungeKutta(y_next_time, y_current_time, current_time, time_delta, error_runge_kutta) \
     do \
@@ -70,6 +63,9 @@ ode = cl.elementwise.ElementwiseKernel(
     } \
     while (0)
 
+'''
+
+ode_operation = '''
     # define PrinceDormand(y_next_time, y_current_time, current_time, t_next_time, time_delta, _updated_time_delta, tolerance, _pd_result) \
     do \
     { \
@@ -190,9 +186,10 @@ ode = cl.elementwise.ElementwiseKernel(
 
         if (updated_time_delta < minimum_dt) updated_time_delta = minimum_dt;
     }
-    ''',
+    '''
 
-    'ode')
+ode = cl.elementwise.ElementwiseKernel(
+    context, ode_arguments, '{}{}{}'.format(derivedFn, rungeKutta, ode_operation), 'ode')
 
 
 def make_initializing_parameters():
@@ -209,6 +206,17 @@ def make_initializing_parameters():
 
 
 if __name__ == '__main__':
+    def print_platform_info(platform):
+        print('=' * 60)
+        print('Platform - Name:     ' + platform.name)
+        print('Platform - Vendor:   ' + platform.vendor)
+        print('Platform - Version:  ' + platform.version)
+        print('Platform - Profile:  ' + platform.profile)
+        print('=' * 60)
+        print('\n')
+
+    print_platform_info(platform)
+
     initializing_parameters = make_initializing_parameters()
 
     y0 = cl_array.to_device(queue, initializing_parameters)
