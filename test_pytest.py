@@ -33,15 +33,17 @@ def test_derivedFn(initials, expected):
 
 
 @pytest.mark.parametrize(
-    'initials, derived_function, expected, expected_error_runge_kutta',
+    'initials, t0, t1, derived_function, expected, expected_error_runge_kutta',
     [
-        (numpy.array([cltypes.make_double4(0.0, 0.0, 0.0, 0.0)]), '1.0, 1.0, 1.0, 1.0',
+        (numpy.array([cltypes.make_double4(0.0, 0.0, 0.0, 0.0)]), 0.0, 1.0, '1.0, 1.0, 1.0, 1.0',
          numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), numpy.array([numpy.double(0.0)])),
-        (numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), '1.0, 1.0, 1.0, 1.0',
-         numpy.array([cltypes.make_double4(2.0, 2.0, 2.0, 2.0)]), numpy.array([numpy.double(0.0)]))
+        (numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 0.0, 1.0, '1.0, 1.0, 1.0, 1.0',
+         numpy.array([cltypes.make_double4(2.0, 2.0, 2.0, 2.0)]), numpy.array([numpy.double(0.0)])),
+        (numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 0.0, 1.0, '1.0, -1.0, 1.0, -1.0',
+         numpy.array([cltypes.make_double4(2.0, 0.0, 2.0, 0.0)]), numpy.array([numpy.double(0.0)]))
     ]
 )
-def test_RungeKutta(initials, derived_function, expected, expected_error_runge_kutta):
+def test_RungeKutta(initials, t0, t1, derived_function, expected, expected_error_runge_kutta):
     sut_derivedFn = '''
         # define derivedFn(k, Y, _t) \
         do \
@@ -60,7 +62,7 @@ def test_RungeKutta(initials, derived_function, expected, expected_error_runge_k
     error_runge_kutta = cl_array.to_device(
         rk_pd_4d.queue, numpy.array([numpy.double(0.0)]))
 
-    sut(y, y0, 0.0, 1.0, error_runge_kutta)
+    sut(y, y0, t0, t1, error_runge_kutta)
 
     assert expected_error_runge_kutta == error_runge_kutta.get()
     assert expected == y.get()
