@@ -33,19 +33,19 @@ def test_derivedFn(initials, expected):
 
 
 @pytest.mark.parametrize(
-    'initials, t0, t1, derived_function, expected, relative_error, expected_error_runge_kutta',
+    'initials, t0, t1, derived_function, expected, absolute_error, relative_error, expected_error_runge_kutta',
     [
         (numpy.array([cltypes.make_double4(0.0, 0.0, 0.0, 0.0)]), 0.0, 1.0, '1.0, 1.0, 1.0, 1.0',
-         numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 1e-18, numpy.array([numpy.double(0.0)])),
+         numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 1e-18, 1e-18, numpy.array([numpy.double(0.0)])),
         (numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 0.0, 1.0, '1.0, 1.0, 1.0, 1.0',
-         numpy.array([cltypes.make_double4(2.0, 2.0, 2.0, 2.0)]), 1e-18, numpy.array([numpy.double(0.0)])),
+         numpy.array([cltypes.make_double4(2.0, 2.0, 2.0, 2.0)]), 1e-18, 1e-18, numpy.array([numpy.double(0.0)])),
         (numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 0.0, 1.0, '1.0, -1.0, 1.0, -1.0',
-         numpy.array([cltypes.make_double4(2.0, 0.0, 2.0, 0.0)]), 1e-18, numpy.array([numpy.double(0.0)])),
+         numpy.array([cltypes.make_double4(2.0, 0.0, 2.0, 0.0)]), 1e-18, 1e-18, numpy.array([numpy.double(0.0)])),
         (numpy.array([cltypes.make_double4(0.0, 1.0, 0.0, 1.0)]), 0.0, 1e-2, 'Y.z, -Y.w, Y.x, -Y.y',
-         numpy.array([cltypes.make_double4(numpy.sin(1e-2), numpy.cos(1e-2), numpy.sin(1e-2), numpy.cos(1e-2))]), 2e-2, numpy.array([numpy.double(1e-11)])),
+         numpy.array([cltypes.make_double4(numpy.sin(1e-2), numpy.cos(1e-2), numpy.sin(1e-2), numpy.cos(1e-2))]), 2e-2, 2e-10, numpy.array([numpy.double(1e-11)])),
     ]
 )
-def test_RungeKutta(initials, t0, t1, derived_function, expected, relative_error, expected_error_runge_kutta):
+def test_RungeKutta(initials, t0, t1, derived_function, expected, absolute_error, relative_error, expected_error_runge_kutta):
     sut_derivedFn = '''
         # define derivedFn(k, Y, _t) \
         do \
@@ -66,7 +66,8 @@ def test_RungeKutta(initials, t0, t1, derived_function, expected, relative_error
 
     sut(y, y0, t0, t1, error_runge_kutta)
 
-    assert pytest.approx(expected_error_runge_kutta, rel=relative_error) == error_runge_kutta.get()
+    assert error_runge_kutta.get() == pytest.approx(
+        expected_error_runge_kutta, abs=absolute_error)
 
-    numpy.testing.assert_allclose(numpy.fromiter(map(lambda i: expected[0][i], range(
-        4)), dtype=numpy.double), numpy.fromiter(map(lambda i: y.get()[0][i], range(4)), dtype=numpy.double), rtol=relative_error, atol=relative_error)
+    numpy.testing.assert_allclose(numpy.array(y.get()[0].tolist()), numpy.array(
+        expected[0].tolist()), rtol=relative_error, atol=absolute_error)
