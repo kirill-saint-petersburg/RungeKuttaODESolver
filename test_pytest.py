@@ -36,11 +36,13 @@ def test_derivedFn(initials, expected):
     'initials, t0, t1, derived_function, expected, relative_error, expected_error_runge_kutta',
     [
         (numpy.array([cltypes.make_double4(0.0, 0.0, 0.0, 0.0)]), 0.0, 1.0, '1.0, 1.0, 1.0, 1.0',
-         numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 1e-14, numpy.array([numpy.double(0.0)])),
+         numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 1e-18, numpy.array([numpy.double(0.0)])),
         (numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 0.0, 1.0, '1.0, 1.0, 1.0, 1.0',
-         numpy.array([cltypes.make_double4(2.0, 2.0, 2.0, 2.0)]), 1e-14, numpy.array([numpy.double(0.0)])),
+         numpy.array([cltypes.make_double4(2.0, 2.0, 2.0, 2.0)]), 1e-18, numpy.array([numpy.double(0.0)])),
         (numpy.array([cltypes.make_double4(1.0, 1.0, 1.0, 1.0)]), 0.0, 1.0, '1.0, -1.0, 1.0, -1.0',
-         numpy.array([cltypes.make_double4(2.0, 0.0, 2.0, 0.0)]), 1e-14, numpy.array([numpy.double(0.0)]))
+         numpy.array([cltypes.make_double4(2.0, 0.0, 2.0, 0.0)]), 1e-18, numpy.array([numpy.double(0.0)])),
+        (numpy.array([cltypes.make_double4(0.0, 1.0, 0.0, 1.0)]), 0.0, 1e-2, 'Y.z, -Y.w, Y.x, -Y.y',
+         numpy.array([cltypes.make_double4(numpy.sin(1e-2), numpy.cos(1e-2), numpy.sin(1e-2), numpy.cos(1e-2))]), 2e-2, numpy.array([numpy.double(1e-11)])),
     ]
 )
 def test_RungeKutta(initials, t0, t1, derived_function, expected, relative_error, expected_error_runge_kutta):
@@ -64,6 +66,7 @@ def test_RungeKutta(initials, t0, t1, derived_function, expected, relative_error
 
     sut(y, y0, t0, t1, error_runge_kutta)
 
-    assert pytest.approx(expected_error_runge_kutta,
-                         rel=relative_error) == error_runge_kutta.get()
-    assert expected == y.get()
+    assert pytest.approx(expected_error_runge_kutta, rel=relative_error) == error_runge_kutta.get()
+
+    numpy.testing.assert_allclose(numpy.fromiter(map(lambda i: expected[0][i], range(
+        4)), dtype=numpy.double), numpy.fromiter(map(lambda i: y.get()[0][i], range(4)), dtype=numpy.double), rtol=relative_error, atol=relative_error)
