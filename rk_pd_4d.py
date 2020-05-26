@@ -210,15 +210,6 @@ ode_operation = '''
     }
     '''
 
-# Create an elementwise kernel object
-#  - Arguments: a string formatted as a C argument list
-#  - Operation: a snippet of C that carries out the desired map operatino
-#  - Name: the fuction name as which the kernel is compiled
-
-ode = cl.elementwise.ElementwiseKernel(
-    context, ode_arguments, '{}{}{}{}{}'.format(makeInitialValuesFromInitializingParametersCoulomb, derivedFnCoulomb, rungeKutta, princeDormand, ode_operation), 'ode')
-
-
 if __name__ == '__main__':
     def print_platform_info(platform):
         print('=' * 60)
@@ -239,6 +230,14 @@ if __name__ == '__main__':
     y = cl_array.empty_like(kernel_side_initializing_parameters)
     pd_result = cl_array.to_device(queue, numpy.zeros(
         initializing_parameters.size, dtype=numpy.int32))
+
+    # Create an elementwise kernel object
+    #  - Arguments: a string formatted as a C argument list
+    #  - Operation: a snippet of C that carries out the desired map operatino
+    #  - Name: the fuction name as which the kernel is compiled
+
+    ode = cl.elementwise.ElementwiseKernel(
+        context, ode_arguments, '{}{}{}{}{}'.format(makeInitialValuesFromInitializingParametersCoulomb, derivedFnCoulomb, rungeKutta, princeDormand, ode_operation), 'ode')
 
     # Call the elementwise kernel
     ode(0.0, 4096.0, 409.6, 0.4096, 32, 1.0e-14,
