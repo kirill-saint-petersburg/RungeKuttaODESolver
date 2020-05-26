@@ -16,25 +16,6 @@ device = platform.get_devices()
 context = cl.Context(device)  # Initialize the Context
 queue = cl.CommandQueue(context)  # Instantiate a Queue
 
-# Create an elementwise kernel object
-#  - Arguments: a string formatted as a C argument list
-#  - Operation: a snippet of C that carries out the desired map operatino
-#  - Name: the fuction name as which the kernel is compiled
-
-ode_arguments = 'double t0, double t, double dt, double minimum_dt, int mesh_size, double tolerance, double4 *y0, double4 *y, int *pd_result'
-
-derivedFn = '''
-    # define derivedFn(k, Y, _t) \
-    do \
-    { \
-        double r = length(Y.xy); \
-    \
-        k.xy = Y.zw; k.zw = Y.xy / (r * r * r); \
-    } \
-    while (0)
-
-'''
-
 rungeKutta = '''
     const double two_thirds = 2.0 / 3.0;
     const double one_seventwoninths = 1.0 / 729.0;
@@ -65,7 +46,7 @@ rungeKutta = '''
 
 '''
 
-ode_operation = '''
+princeDormand = '''
     # define PrinceDormand(y_next_time, y_current_time, current_time, t_next_time, time_delta, _updated_time_delta, tolerance, _pd_result) \
     do \
     { \
@@ -155,6 +136,47 @@ ode_operation = '''
     } \
     while (0)
 
+'''
+
+derivedFnCoulomb = '''
+    # define derivedFn(k, Y, _t) \
+    do \
+    { \
+        double r = length(Y.xy); \
+    \
+        k.xy = Y.zw; k.zw = Y.xy / (r * r * r); \
+    } \
+    while (0)
+
+'''
+
+makeInitialValuesFromInitializingParametersCoulomb = '''
+    #define MakeInitialValues(_y0, _initializing_parameter) \
+    do \
+    { \
+        _y0 = _initializing_parameter; \
+    } \
+    while (0)
+
+'''
+
+
+def make_initializing_parameters():
+    task_size = 1024 * 16
+    x0 = -2048
+    v_x0 = 1.0
+    return numpy.array(
+        [cltypes.make_double4(
+            x0,
+            0.05 + (x / task_size) * 4.05,
+            v_x0,
+            0.0
+        ) for x in range(task_size)], dtype=cltypes.double4)
+
+
+ode_arguments = 'double t0, double t, double dt, double minimum_dt, int mesh_size, double tolerance, double4 *initializing_parameters, double4 *y, int *pd_result'
+
+ode_operation = '''
     # define pd_attempts (32)
     # define pd_min_scale_factor (0.0625)
     # define pd_max_scale_factor (16.0)
@@ -166,7 +188,7 @@ ode_operation = '''
     pd_result[i] = pd_success;
     double updated_time_delta = dt;
 
-    y[i] = y0[i];
+    MakeInitialValues(y[i], initializing_parameters[i]);
 
     double mesh_time_interval = (t - t0) / mesh_size;
 
@@ -188,21 +210,13 @@ ode_operation = '''
     }
     '''
 
+# Create an elementwise kernel object
+#  - Arguments: a string formatted as a C argument list
+#  - Operation: a snippet of C that carries out the desired map operatino
+#  - Name: the fuction name as which the kernel is compiled
+
 ode = cl.elementwise.ElementwiseKernel(
-    context, ode_arguments, '{}{}{}'.format(derivedFn, rungeKutta, ode_operation), 'ode')
-
-
-def make_initializing_parameters():
-    task_size = 1024 * 16
-    x0 = -2048
-    v_x0 = 1.0
-    return numpy.array(
-        [cltypes.make_double4(
-            x0,
-            0.05 + (x / task_size) * 4.05,
-            v_x0,
-            0.0
-        ) for x in range(task_size)], dtype=cltypes.double4)
+    context, ode_arguments, '{}{}{}{}{}'.format(makeInitialValuesFromInitializingParametersCoulomb, derivedFnCoulomb, rungeKutta, princeDormand, ode_operation), 'ode')
 
 
 if __name__ == '__main__':
@@ -219,13 +233,16 @@ if __name__ == '__main__':
 
     initializing_parameters = make_initializing_parameters()
 
-    y0 = cl_array.to_device(queue, initializing_parameters)
-    y = cl_array.empty_like(y0)  # Create an empty pyopencl destination array
+    kernel_side_initializing_parameters = cl_array.to_device(
+        queue, initializing_parameters)
+    # Create an empty pyopencl destination array
+    y = cl_array.empty_like(kernel_side_initializing_parameters)
     pd_result = cl_array.to_device(queue, numpy.zeros(
         initializing_parameters.size, dtype=numpy.int32))
 
     # Call the elementwise kernel
-    ode(0.0, 4096.0, 409.6, 0.4096, 32, 1.0e-14, y0, y, pd_result)
+    ode(0.0, 4096.0, 409.6, 0.4096, 32, 1.0e-14,
+        kernel_side_initializing_parameters, y, pd_result)
 
     with open("result_%s.out" % strftime("%d_%m_%Y_%H_%M_%S", localtime()), 'a+') as f_handle:
         numpy.savetxt(f_handle, y.get())

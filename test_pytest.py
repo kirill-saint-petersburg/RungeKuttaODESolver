@@ -20,9 +20,9 @@ def test_parameters_size():
          numpy.array([cltypes.make_double4(7.0, -8.0, 3.0 / 125.0, 4.0 / 125.0)]))
     ]
 )
-def test_derivedFn(initials, expected):
+def test_derivedFnCoulomb(initials, expected):
     sut = cl.elementwise.ElementwiseKernel(
-        rk_pd_4d.context, 'double4 *k, double4 *y, double t', '{}{}'.format(rk_pd_4d.derivedFn, 'derivedFn(k[0], (y[0]), (t))'), 'sut')
+        rk_pd_4d.context, 'double4 *k, double4 *y, double t', '{}{}'.format(rk_pd_4d.derivedFnCoulomb, 'derivedFn(k[0], (y[0]), (t))'), 'sut')
 
     y = cl_array.to_device(rk_pd_4d.queue, initials)
     k = cl_array.empty_like(y)
