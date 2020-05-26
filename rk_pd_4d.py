@@ -237,11 +237,11 @@ if __name__ == '__main__':
     #  - Name: the fuction name as which the kernel is compiled
 
     ode = cl.elementwise.ElementwiseKernel(
-        context, ode_arguments, '{}{}{}{}{}'.format(makeInitialValuesFromInitializingParametersCoulomb, derivedFnCoulomb, rungeKutta, princeDormand, ode_operation), 'ode')
+        context, ode_arguments, ('{}' * 5).format(makeInitialValuesFromInitializingParametersCoulomb, derivedFnCoulomb, rungeKutta, princeDormand, ode_operation), 'ode')
 
     # Call the elementwise kernel
     ode(0.0, 4096.0, 409.6, 0.4096, 32, 1.0e-14,
         kernel_side_initializing_parameters, y, pd_result)
 
-    with open("result_%s.out" % strftime("%d_%m_%Y_%H_%M_%S", localtime()), 'a+') as f_handle:
+    with open('result_%s.out' % strftime('%d_%m_%Y_%H_%M_%S', localtime()), 'a+') as f_handle:
         numpy.savetxt(f_handle, y.get())
