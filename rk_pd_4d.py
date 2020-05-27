@@ -1,21 +1,5 @@
 # Use OpenCL For Prince Dormand Calculations (Using PyOpenCL Arrays and Elementwise)
 
-import pyopencl as cl  # Import the OpenCL GPU computing API
-# Import PyOpenCL Array (a Numpy array plus an OpenCL buffer object)
-import pyopencl.array as cl_array
-import pyopencl.cltypes as cltypes
-import numpy  # Import Numpy number tools
-
-from time import strftime, localtime
-
-platform = next(platform for platform in cl.get_platforms()
-                if platform.name == 'AMD Accelerated Parallel Processing')
-
-device = platform.get_devices()
-
-context = cl.Context(device)  # Initialize the Context
-queue = cl.CommandQueue(context)  # Instantiate a Queue
-
 rungeKutta = '''
     const double two_thirds = 2.0 / 3.0;
     const double one_seventwoninths = 1.0 / 729.0;
@@ -161,7 +145,10 @@ makeInitialValuesFromInitializingParametersCoulomb = '''
 '''
 
 
-def make_initializing_parameters():
+def make_initializing_parameters_сoulomb():
+    import numpy  # Import Numpy number tools
+    import pyopencl.cltypes as cltypes
+
     task_size = 1024 * 16
     x0 = -2048
     v_x0 = 1.0
@@ -211,6 +198,14 @@ ode_operation = '''
     '''
 
 if __name__ == '__main__':
+    import pyopencl as cl  # Import the OpenCL GPU computing API
+    # Import PyOpenCL Array (a Numpy array plus an OpenCL buffer object)
+    import pyopencl.array as cl_array
+
+    import numpy  # Import Numpy number tools
+
+    from time import strftime, localtime
+
     def print_platform_info(platform):
         print('=' * 60)
         print('Platform - Name:     ' + platform.name)
@@ -220,9 +215,17 @@ if __name__ == '__main__':
         print('=' * 60)
         print('\n')
 
+    platform = next(platform for platform in cl.get_platforms()
+                    if platform.name == 'AMD Accelerated Parallel Processing')
+
     print_platform_info(platform)
 
-    initializing_parameters = make_initializing_parameters()
+    device = platform.get_devices()
+
+    context = cl.Context(device)  # Initialize the Context
+    queue = cl.CommandQueue(context)  # Instantiate a Queue
+
+    initializing_parameters = make_initializing_parameters_сoulomb()
 
     kernel_side_initializing_parameters = cl_array.to_device(
         queue, initializing_parameters)
