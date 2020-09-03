@@ -122,6 +122,42 @@ princeDormand = '''
 
 '''
 
+ode_arguments = 'double t0, double t, double dt, double minimum_dt, int mesh_size, double tolerance, double4 *initializing_parameters, double4 *y, int *pd_result'
+
+ode_operation = '''
+    # define pd_attempts (32)
+    # define pd_min_scale_factor (0.0625)
+    # define pd_max_scale_factor (16.0)
+
+    # define pd_success (0)
+    # define pd_failed_too_many_function_calls (-1)
+    # define pd_failed_wrong_step (-2)
+
+    pd_result[i] = pd_success;
+    double updated_time_delta = dt;
+
+    MakeInitialValues(y[i], initializing_parameters[i]);
+
+    double mesh_time_interval = (t - t0) / mesh_size;
+
+    for (int mesh_index = 0; mesh_index < mesh_size; mesh_index++)
+    {
+        if (pd_result[i] != pd_success) break;
+
+        double4 y_initial = y[i];
+
+        double mesh_t0 = t0 + mesh_index * mesh_time_interval;
+        double mesh_t  = mesh_t0 + mesh_time_interval;
+
+        PrinceDormand(y[i], y_initial,
+                      (mesh_t0), (mesh_t),
+                      (updated_time_delta), updated_time_delta,
+                      tolerance, pd_result[i]);
+
+        if (updated_time_delta < minimum_dt) updated_time_delta = minimum_dt;
+    }
+    '''
+
 derivedFnCoulomb = '''
     # define derivedFn(k, Y, _t) \
     do \
@@ -160,42 +196,6 @@ def make_initializing_parameters_сoulomb():
             0.0
         ) for x in range(task_size)], dtype=cltypes.double4)
 
-
-ode_arguments = 'double t0, double t, double dt, double minimum_dt, int mesh_size, double tolerance, double4 *initializing_parameters, double4 *y, int *pd_result'
-
-ode_operation = '''
-    # define pd_attempts (32)
-    # define pd_min_scale_factor (0.0625)
-    # define pd_max_scale_factor (16.0)
-
-    # define pd_success (0)
-    # define pd_failed_too_many_function_calls (-1)
-    # define pd_failed_wrong_step (-2)
-
-    pd_result[i] = pd_success;
-    double updated_time_delta = dt;
-
-    MakeInitialValues(y[i], initializing_parameters[i]);
-
-    double mesh_time_interval = (t - t0) / mesh_size;
-
-    for (int mesh_index = 0; mesh_index < mesh_size; mesh_index++)
-    {
-        if (pd_result[i] != pd_success) break;
-
-        double4 y_initial = y[i];
-
-        double mesh_t0 = t0 + mesh_index * mesh_time_interval;
-        double mesh_t  = mesh_t0 + mesh_time_interval;
-
-        PrinceDormand(y[i], y_initial,
-                      (mesh_t0), (mesh_t),
-                      (updated_time_delta), updated_time_delta,
-                      tolerance, pd_result[i]);
-
-        if (updated_time_delta < minimum_dt) updated_time_delta = minimum_dt;
-    }
-    '''
 
 if __name__ == '__main__':
     import pyopencl as cl  # Import the OpenCL GPU computing API
